@@ -1,18 +1,21 @@
 import cv2
 import mediapipe as mp
+import webbrowser
+import pyautogui
+import time
 
-# Inicializar el módulo de pose de MediaPipe
+# Inicializar el módulo de detección de pose de MediaPipe
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 
 # Inicializar la captura de video desde la cámara
 cap = cv2.VideoCapture(0)
 
-# Crear una ventana para mostrar solo las líneas dibujadas
-cv2.namedWindow('Lines Only')
-
 # Inicializar el detector de pose
 pose_detector = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+
+# Bandera para controlar el envío de mensaje
+mensaje_enviado = False
 
 while cap.isOpened():
     # Capturar un frame de la cámara
@@ -27,22 +30,28 @@ while cap.isOpened():
     # Detectar pose (puntos clave del cuerpo) en el frame
     results = pose_detector.process(rgb_frame)
     if results.pose_landmarks:
-        # Dibujar todos los puntos clave del cuerpo
+        # Dibujar puntos clave del cuerpo
         mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS, 
                                   landmark_drawing_spec=mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=2, circle_radius=2))
         
-        # Mostrar solo las líneas dibujadas en la ventana 'Lines Only'
-        lines_only = frame.copy()
-        lines_only.fill(0)  # Rellenar la imagen con negro para borrar la imagen original
-        mp_drawing.draw_landmarks(lines_only, results.pose_landmarks, mp_pose.POSE_CONNECTIONS, 
-                                  landmark_drawing_spec=mp_drawing.DrawingSpec(color=(255, 255, 255), thickness=2, circle_radius=2))
-        cv2.imshow('Lines Only', lines_only)
+        # Contar el número de puntos clave detectados
+        num_keypoints = len(results.pose_landmarks.landmark)
         
-        # Dibujar puntos adicionales para más referencias
-        for landmark in results.pose_landmarks.landmark:
-            x, y = int(landmark.x * frame.shape[1]), int(landmark.y * frame.shape[0])
-            cv2.circle(frame, (x, y), radius=2, color=(0, 255, 0), thickness=-1)  # Dibujar un punto verde
-        
+        # Si se detecta un cuerpo, abrir WhatsApp y enviar un mensaje
+        if num_keypoints > 15 and not mensaje_enviado:
+            # Abrir WhatsApp web en el navegador
+            webbrowser.open("https://web.whatsapp.com/")
+            time.sleep(10)  # Esperar unos segundos para que cargue la página
+            
+            # Simular el ingreso de texto y enviar el mensaje
+            pyautogui.click(x=200, y=200)  # Hacer clic en la zona de escritura
+            time.sleep(1)
+            pyautogui.typewrite("Hola desde Python!")  # Escribir el mensaje
+            time.sleep(1)
+            pyautogui.press('enter')  # Enviar el mensaje
+            
+            mensaje_enviado = True  # Marcar que se envió el mensaje
+    
     # Mostrar el frame con los puntos dibujados
     cv2.imshow('Pose Detection', frame)
     

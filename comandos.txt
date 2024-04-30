@@ -3,3 +3,4 @@ source visionArtifical/bin/activate
 python3 -m venv trackArduino
 pip install mediapipe
 pip install pyautogui webbrowser
+pip install pynput

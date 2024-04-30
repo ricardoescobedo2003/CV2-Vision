@@ -1,74 +1,50 @@
 import cv2
-import mediapipe as mp
-import pyautogui
+import numpy as np
+from pynput.keyboard import Key, Controller
 
-# Inicializar el módulo de detección de manos de MediaPipe
-mp_hands = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
+# Inicializar el controlador del teclado
+keyboard = Controller()
 
 # Inicializar la captura de video desde la cámara
 cap = cv2.VideoCapture(0)
 
-# Inicializar el detector de manos
-hands_detector = mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.5)
-
-# Variables para control de gestos
-finger_count = 0
-hand_open = False
-
-while cap.isOpened():
-    # Capturar un frame de la cámara
+while True:
     ret, frame = cap.read()
     if not ret:
-        print("Error al capturar el frame")
         break
     
-    # Convertir el frame de BGR a RGB (necesario para MediaPipe)
-    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    # Voltear el fotograma horizontalmente
+    frame = cv2.flip(frame, 1)
     
-    # Detectar manos en el frame
-    results = hands_detector.process(rgb_frame)
-    if results.multi_hand_landmarks:
-        # Dibujar puntos clave de la mano
-        for hand_landmarks in results.multi_hand_landmarks:
-            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS,
-                                      landmark_drawing_spec=mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2))
-            
-            # Obtener la posición de la punta del dedo índice (dedo 8) y del dedo medio (dedo 12)
-            index_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
-            middle_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
-            index_tip_y = int(index_tip.y * frame.shape[0])
-            middle_tip_y = int(middle_tip.y * frame.shape[0])
-            
-            # Detectar gestos
-            if index_tip_y < hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_DIP].y:
-                finger_count += 1
-            else:
-                finger_count = 0
-            
-            if finger_count == 1:
-                # Levantar un dedo: Subir el volumen
-                pyautogui.press('volumeup')
-            elif finger_count == 2:
-                # Levantar dos dedos: Bajar el volumen
-                pyautogui.press('volumedown')
-            elif finger_count == 5:
-                # Abrir la mano: Presionar la tecla de espacio
-                if not hand_open:
-                    hand_open = True
-                    pyautogui.press('space')
-                    print("Espacio detectado")
-            elif middle_tip_y < hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_DIP].y:
-                # Levantar el dedo medio: Presionar Shift + N
-                pyautogui.hotkey('shift', 'n')
+    # Convertir el fotograma a escala de grises
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     
-    # Mostrar el frame con los puntos dibujados
-    cv2.imshow('Hand Gesture Control', frame)
+    # Umbralizar la imagen para obtener la máscara de la mano
+    _, thresh = cv2.threshold(gray, 120, 255, cv2.THRESH_BINARY)
     
-    # Salir del bucle si se presiona la tecla 'q'
-    if cv2.waitKey(10) & 0xFF == ord('q'):
+    # Encontrar los contornos en la máscara de la mano
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Buscar el contorno de la mano más grande
+    if contours:
+        max_contour = max(contours, key=cv2.contourArea)
+        
+        # Calcular el área del contorno
+        area = cv2.contourArea(max_contour)
+        
+        # Si el área es lo suficientemente grande, simular la pulsación de la tecla de espacio
+        if area > 10000:
+            print("Espacio detectado")
+            keyboard.press(Key.space)
+            keyboard.release(Key.space)
+    
+    # Mostrar la imagen
+    cv2.imshow('Hand Detection', frame)
+    
+    # Salir del bucle si se presiona 'q'
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# Liberar los recursos y cerrar las ventanas
+# Liberar la captura y cerrar la ventana
 cap.release()
 cv2.destroyAllWindows()
