@@ -6,7 +6,7 @@ mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 
 
-camera_index = 2  # Cambia esto al índice correcto de tu cámara USB
+camera_index = 0  # Cambia esto al índice correcto de tu cámara USB
 
 # Inicializar la captura de video desde la cámara USB
 cap = cv2.VideoCapture(camera_index)
