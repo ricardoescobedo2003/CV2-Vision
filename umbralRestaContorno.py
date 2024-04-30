@@ -1,15 +1,19 @@
 import cv2
 import mediapipe as mp
+import numpy as np
 
 # Inicializar el módulo de detección facial de MediaPipe
 mp_face_mesh = mp.solutions.face_mesh
 mp_drawing = mp.solutions.drawing_utils
 
 # Inicializar la captura de video desde la cámara
-cap = cv2.VideoCapture(2)
+cap = cv2.VideoCapture(0)
 
-# Crear una ventana para mostrar solo las líneas dibujadas
-cv2.namedWindow('Lines Only')
+# Crear ventanas para mostrar las diferentes imágenes
+cv2.namedWindow('Face Mesh')
+cv2.namedWindow('Contour')
+cv2.namedWindow('Subtraction')
+cv2.namedWindow('Thresholded')
 
 # Inicializar el detector de puntos clave de la cara
 face_mesh = mp_face_mesh.FaceMesh(min_detection_confidence=0.5, min_tracking_confidence=0.5)
@@ -28,18 +32,31 @@ while cap.isOpened():
     results = face_mesh.process(rgb_frame)
     if results.multi_face_landmarks:
         for face_landmarks in results.multi_face_landmarks:
-            # Dibujar puntos clave de la cara
+            # Dibujar puntos clave de la cara en la imagen original
             mp_drawing.draw_landmarks(frame, face_landmarks, mp_face_mesh.FACEMESH_TESSELATION,
                                       landmark_drawing_spec=mp_drawing.DrawingSpec(color=(255, 0, 0), thickness=1, circle_radius=1),
                                       connection_drawing_spec=mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=1))
             
-            # Mostrar solo las líneas dibujadas en la ventana 'Lines Only'
-            lines_only = frame.copy()
-            lines_only.fill(0)  # Rellenar la imagen con negro para borrar la imagen original
-            mp_drawing.draw_landmarks(lines_only, face_landmarks, mp_face_mesh.FACEMESH_TESSELATION,
-                                      landmark_drawing_spec=mp_drawing.DrawingSpec(color=(255, 255, 255), thickness=1, circle_radius=1),
-                                      connection_drawing_spec=mp_drawing.DrawingSpec(color=(255, 255, 255), thickness=1))
-            cv2.imshow('Lines Only', lines_only)
+            # Calcular el contorno de la cara
+            mask = np.zeros_like(frame)
+            mp_drawing.draw_landmarks(mask, face_landmarks, mp_face_mesh.FACEMESH_TESSELATION)
+            contour = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+            _, contour = cv2.threshold(contour, 1, 255, cv2.THRESH_BINARY)
+            contours, _ = cv2.findContours(contour, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if contours:
+                selected_contour = max(contours, key=cv2.contourArea)  # Seleccionar el contorno más grande
+                cv2.drawContours(frame, [selected_contour], -1, (0, 0, 255), 1)  # Dibujar el contorno seleccionado
+                
+                # Mostrar la imagen del contorno
+                cv2.imshow('Contour', frame)
+                
+                # Restar la imagen original del contorno
+                subtraction = cv2.subtract(frame, mask)
+                cv2.imshow('Subtraction', subtraction)
+                
+                # Umbralizar la imagen del contorno seleccionado
+                _, thresholded = cv2.threshold(selected_contour, 1, 255, cv2.THRESH_BINARY)
+                cv2.imshow('Thresholded', thresholded)
     
     # Mostrar el frame con los puntos dibujados
     cv2.imshow('Face Mesh', frame)

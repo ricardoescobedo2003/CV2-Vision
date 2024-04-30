@@ -5,8 +5,11 @@ import mediapipe as mp
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 
-# Inicializar la captura de video desde la cámara
-cap = cv2.VideoCapture(0)
+
+camera_index = 2  # Cambia esto al índice correcto de tu cámara USB
+
+# Inicializar la captura de video desde la cámara USB
+cap = cv2.VideoCapture(camera_index)
 
 # Crear una ventana para mostrar solo las líneas dibujadas
 cv2.namedWindow('Lines Only')
